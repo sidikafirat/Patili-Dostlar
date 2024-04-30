@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oyun</title>
+    <style>
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: url('images/arkaplan.png'); /* Arka plan resmi */
+            background-size: cover; /* Arka plan resminin ekran boyutuna uyumlu olmasını sağlar */
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background-image: url('images/arkaplani1.png');
+            background-size: cover;
+        }
+
+        canvas {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 1px solid black;
+            
+        }
+
+        #startButton {
+            display: block; /* Başlangıçta görünür yap */
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 24px;
+            color: white;
+        }
+
+        #missedCounter {
+            position: absolute;
+            top: 40px; /* Skordan 30 piksel aşağıda */
+            left: 10px;
+            font-size: 18px;
+            color: white;
+        }
+
+        #alertContainer {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        #alertContainer button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    
+    <button id="startButton" onclick="startGame()">Start</button>
+    <div class="game-container" style="display: none;">
+        
+        <span id="score">Mama Puan: 0</span>
+        <span id="missedCounter">Kaçırılan Mama: 0</span>
+        <canvas id="gameCanvas" width="400" height="600"></canvas>
+        <!-- Sepeti büyüttüm -->
+        <img id="basket" src="images/sepet.png" alt="Sepet" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 100px; height: 100px;">
+    </div>
+
+    <div id="alertContainer" style="display:none;">
+        <p>Patili dostalarınıza bir kap mama bırakmayı unutmayınız!</p>
+        <p>Mama Puan: <span id="finalScore">0</span></p>
+        <button onclick="returnToStart()">Tamam</button>
+    </div>
+
+    <script>
+        var score = 0;
+        var missedCounter = 0;
+        var scoredThisRound = false;
+        var foodInterval; // setInterval fonksiyonunu tutacak değişken
+        var scoreInterval; // setInterval fonksiyonunu tutacak değişken
+
+        function startGame() {
+            document.getElementById("startButton").style.display = "none";
+            document.querySelector(".game-container").style.display = "block";
+
+            var canvas = document.getElementById("gameCanvas");
+            var ctx = canvas.getContext("2d");
+            var basket = document.getElementById("basket");
+
+            canvas.width = window.innerWidth - 20;
+            canvas.height = window.innerHeight - 20;
+
+            var foods = [
+                "images/kedimama1.png",
+                "images/köpüşmama2.png",
+                "images/köpüşmama3.png"
+            ];
+
+            foodInterval = setInterval(function() {
+                var randomIndex = Math.floor(Math.random() * foods.length);
+                var foodImage = new Image();
+                foodImage.src = foods[randomIndex];
+                foodImage.onload = function() {
+                    var foodWidth = 40;
+                    var foodHeight = 40;
+                    var foodX = Math.random() * (canvas.width - foodWidth);
+                    var foodY = 0;
+
+                    function draw() {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(foodImage, foodX, foodY, foodWidth, foodHeight);
+
+                        if (!scoredThisRound && foodX + foodWidth >= basket.offsetLeft &&
+                            foodX <= basket.offsetLeft + basket.offsetWidth &&
+                            foodY + foodHeight >= basket.offsetTop && foodY <= basket.offsetTop + basket.offsetHeight) {
+                            console.log("Mama sepetin üzerinden geçti!");
+                            score += 5;
+                            document.getElementById("score").textContent = "Mama Puan: " + score;
+                            scoredThisRound = true;
+                            foodImage = null; // Mama fotoğrafını sıfırla
+                        }
+
+                        if (foodY >= canvas.height) {
+                            console.log("Mama canvas alanından çıktı!");
+                            missedCounter++;
+                            document.getElementById("missedCounter").textContent = "Kaçırılan Mama: " + missedCounter;
+                            scoredThisRound = true;
+                            foodImage = null; // Mama fotoğrafını sıfırla
+                            if (missedCounter >= 3) { // Eğer 3 kez kaçırıldıysa oyunu durdur
+                                clearInterval(foodInterval); // setInterval fonksiyonunu durdur
+                                clearInterval(scoreInterval); // Skor artışını durdur
+                                endGame();
+                            }
+                        } else {
+                            scoredThisRound = false;
+                        }
+
+                        foodY += 1;
+
+                        requestAnimationFrame(draw);
+                    }
+
+                    draw();
+                };
+            }, 5000);
+
+            scoreInterval = setInterval(function() {
+                score++;
+                document.getElementById("score").textContent = "Mama Puan: " + score;
+                scoredThisRound = false;
+                document.getElementById("missedCounter").textContent = "Kaçırılan Mama: " + missedCounter;
+            }, 1000);
+        }
+
+        function returnToStart() {
+            document.getElementById("alertContainer").style.display = "none";
+            document.querySelector(".game-container").style.display = "none";
+            document.getElementById("startButton").style.display = "block";
+            score = 0;
+            missedCounter = 0;
+            document.getElementById("score").textContent = "Mama Puan: " + score;
+            document.getElementById("missedCounter").textContent = "Kaçırılan Mama: " + missedCounter;
+        }
+
+        function endGame() {
+            document.getElementById("alertContainer").style.display = "block";
+            document.getElementById("finalScore").textContent = score;
+        }
+
+        document.addEventListener("keydown", function(event) {
+            var basket = document.getElementById("basket");
+
+            if (event.key === "ArrowLeft" && basket.offsetLeft > 0) {
+                basket.style.left = basket.offsetLeft - 10 + "px";
+            }
+            if (event.key === "ArrowRight" && basket.offsetLeft + basket.offsetWidth < window.innerWidth) {
+                basket.style.left = basket.offsetLeft + 10 + "px";
+            }
+            if (event.key === "ArrowUp" && basket.offsetTop > 0) {
+                basket.style.top = basket.offsetTop - 10 + "px";
+            }
+            if (event.key === "ArrowDown" && basket.offsetTop + basket.offsetHeight < window.innerHeight) {
+                basket.style.top = basket.offsetTop + 10 + "px";
+            }
+        });
+    </script>
+</body>
+
+</html>
